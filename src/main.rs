@@ -45,9 +45,9 @@ async fn narinfo(Path(hash): Path<String>) -> Response {
             format_pair("NarSize", &format!("{}", pathinfo.nar_size)),
             format_pair("References", &pathinfo.references),
             format_pair("Deriver", &pathinfo.deriver),
-            Some(String::from("")),
+            format_pair("CA", &pathinfo.ca),
         ]
-        .into_iter()
+        .into_iter().chain(pathinfo.sigs.iter().map(|x| format_pair("Sig", &x))).chain([Some(String::from(""))].into_iter())
         .filter_map(|x| x)
         .collect::<Vec<String>>()
         .join("\n"),
