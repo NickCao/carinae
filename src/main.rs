@@ -20,7 +20,7 @@ async fn info() -> Response {
             WantMassQuery: 1
             Priority: 30
         "},
-            crate::ffi::nixStoreDir(store).unwrap()
+            crate::ffi::nixStoreDir(store)
         ))
 }
 
@@ -114,7 +114,7 @@ mod ffi {
     }
     unsafe extern "C++" {
         fn nixOpenStore(uri: String) -> Result<SharedPtr<Store>>;
-        fn nixStoreDir(store: SharedPtr<Store>) -> Result<String>;
+        fn nixStoreDir(store: SharedPtr<Store>) -> String;
         fn nixPathInfoFromHashPart(store: SharedPtr<Store>, hash: String) -> Result<NixPathInfo>;
         fn nixNarFromHashPart(
             store: SharedPtr<Store>,
