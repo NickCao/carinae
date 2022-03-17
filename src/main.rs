@@ -80,6 +80,12 @@ async fn main() -> Result<(), std::io::Error> {
         .at("/nix-cache-info", get(info))
         .at("/:hash<[0-9a-z]+>.narinfo", get(narinfo))
         .at("/nar/:hash<[0-9a-z]+>.nar.zst", get(nar));
+    // TODO: error handling
+    // TODO: append sig
+    // TODO: log
+    // TODO: realisation
+    // TODO: ls
+    // TODO: debug info
     Server::new(TcpListener::bind("127.0.0.1:3000"))
         .run(app)
         .await
@@ -91,12 +97,12 @@ pub struct NarContext(tokio::sync::mpsc::Sender<Vec<u8>>);
 mod ffi {
     struct NixPathInfo {
         path: String,
-        deriver: String, // TODO: Option<String>
+        deriver: String, // FIXME: Option<String>
         nar_hash: String,
         references: String,
         nar_size: u64,
         sigs: Vec<String>,
-        ca: String, // TODO: Option<String>
+        ca: String, // FIXME: Option<String>
     }
     extern "Rust" {
         type NarContext;
