@@ -19,12 +19,14 @@
         in
         {
           devShell = pkgs.mkShell {
-            buildInputs = [
+            nativeBuildInputs = [
               (pkgs.rust-bin.selectLatestNightlyWith (toolchain:
                 toolchain.default.override {
                   extensions = [ "rust-analyzer-preview" ];
                 }))
+              pkgs.rustPlatform.bindgenHook
             ];
+            buildInputs = with pkgs;[ nixVersions.stable boost ];
           };
         }
       );
