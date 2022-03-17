@@ -24,35 +24,34 @@ async fn info() -> Response {
         ))
 }
 
+fn format_pair(key: &str, value: &str) -> Option<String> {
+    if value == "" {
+        None
+    } else {
+        Some(format!("{}: {}", key, value))
+    }
+}
+
+
 #[handler]
 async fn narinfo(Path(hash): Path<String>) -> Response {
     let store = crate::ffi::nixOpenStore(String::from("daemon")).unwrap();
     let pathinfo = crate::ffi::nixPathInfoFromHashPart(store, hash.clone()).unwrap();
     Response::builder().content_type("text/x-nix-narinfo").body(
         [
-            format!(
-                indoc! {"
-            StorePath: {} 
-            URL: nar/{}.nar.zst
-            Compression: zstd
-            NarHash: {} 
-            NarSize: {}
-            References: {}
-        "},
-                pathinfo.path, hash, pathinfo.nar_hash, pathinfo.nar_size, pathinfo.references
-            ),
-            if pathinfo.deriver != "" {
-                format!(
-                    indoc! {"
-            Deriver: {}
-        "},
-                    pathinfo.deriver
-                )
-            } else {
-                "".to_string()
-            },
+            format_pair("StorePath", &pathinfo.path),
+            format_pair("URL", &format!("nar/{}.nar", &hash)),
+            format_pair("Compression", "none"),
+            format_pair("NarHash", &pathinfo.nar_hash),
+            format_pair("NarSize", &format!("{}", pathinfo.nar_size)),
+            format_pair("References", &pathinfo.references),
+            format_pair("Deriver", &pathinfo.deriver),
+            Some(String::from("")),
         ]
-        .join(""),
+        .into_iter()
+        .filter_map(|x| x)
+        .collect::<Vec<String>>()
+        .join("\n"),
     )
 }
 

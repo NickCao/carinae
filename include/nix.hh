@@ -1,9 +1,9 @@
 #pragma once
 #define SYSTEM "x86_64-linux"
-#include "carinae/src/main.rs.h"
 #include "nix/nar-info.hh"
 #include "nix/store-api.hh"
 #include "rust/cxx.h"
+#include "carinae/src/main.rs.h"
 
 namespace carinae {
 struct NixPathInfo;
