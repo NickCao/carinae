@@ -79,7 +79,7 @@ async fn main() -> Result<(), std::io::Error> {
         .at("/", get(index))
         .at("/nix-cache-info", get(info))
         .at("/:hash<[0-9a-z]+>.narinfo", get(narinfo))
-        .at("/nar/:hash<[0-9a-z]+>.nar.zst", get(nar));
+        .at("/nar/:hash<[0-9a-z]+>.nar", get(nar));
     Server::new(TcpListener::bind("127.0.0.1:3000"))
         .run(app)
         .await

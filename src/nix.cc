@@ -1,4 +1,3 @@
-#pragma once
 #include "carinae/include/nix.hh"
 
 namespace carinae {
