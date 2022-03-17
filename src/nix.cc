@@ -33,12 +33,12 @@ NixPathInfo nixPathInfoFromHashPart(std::shared_ptr<nix::Store> store,
 }
 
 struct RustSink : nix::Sink {
-public:
-  rust::Box<NarContext> *ctx;
-  rust::Fn<bool(NarContext &ctx, rust::Vec<rust::u8>)> *send;
+ public:
+  rust::Box<NarContext>* ctx;
+  rust::Fn<bool(NarContext& ctx, rust::Vec<rust::u8>)>* send;
   bool status;
-  RustSink(rust::Box<NarContext> *ctx,
-           rust::Fn<bool(NarContext &ctx, rust::Vec<rust::u8>)> *send,
+  RustSink(rust::Box<NarContext>* ctx,
+           rust::Fn<bool(NarContext& ctx, rust::Vec<rust::u8>)>* send,
            bool status)
       : ctx(ctx), send(send), status(status){};
   ~RustSink() {}
@@ -52,9 +52,10 @@ public:
 };
 
 void nixNarFromHashPart(
-    std::shared_ptr<nix::Store> store, rust::String hash,
+    std::shared_ptr<nix::Store> store,
+    rust::String hash,
     rust::Box<NarContext> ctx,
-    rust::Fn<bool(NarContext &ctx, rust::Vec<rust::u8>)> send) {
+    rust::Fn<bool(NarContext& ctx, rust::Vec<rust::u8>)> send) {
   auto path = store->queryPathFromHashPart(std::string(hash));
   if (path) {
     auto sink = RustSink{&ctx, &send, true};
@@ -62,4 +63,4 @@ void nixNarFromHashPart(
   }
 }
 
-} // namespace carinae
+}  // namespace carinae
