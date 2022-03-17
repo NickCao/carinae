@@ -32,7 +32,6 @@ fn format_pair(key: &str, value: &str) -> Option<String> {
     }
 }
 
-
 #[handler]
 async fn narinfo(Path(hash): Path<String>) -> Response {
     let store = crate::ffi::nixOpenStore(String::from("daemon")).unwrap();
@@ -40,8 +39,8 @@ async fn narinfo(Path(hash): Path<String>) -> Response {
     Response::builder().content_type("text/x-nix-narinfo").body(
         [
             format_pair("StorePath", &pathinfo.path),
-            format_pair("URL", &format!("nar/{}.nar", &hash)),
-            format_pair("Compression", "none"),
+            format_pair("URL", &format!("nar/{}.nar.zst", &hash)),
+            format_pair("Compression", "zstd"),
             format_pair("NarHash", &pathinfo.nar_hash),
             format_pair("NarSize", &format!("{}", pathinfo.nar_size)),
             format_pair("References", &pathinfo.references),
@@ -67,10 +66,11 @@ async fn nar(Path(hash): Path<String>) -> Response {
     });
     Response::builder()
         .content_type("application/x-nix-nar")
-        .body(Body::from_bytes_stream(
+        .body(Body::from_async_read(
+            async_compression::tokio::bufread::ZstdEncoder::new(tokio_util::io::StreamReader::new(
             tokio_stream::wrappers::ReceiverStream::new(rx)
-                .map(|x| Result::<_, std::io::Error>::Ok(x)),
-        ))
+                .map(|x| Result::<_, std::io::Error>::Ok(std::collections::VecDeque::from(x)))),
+        )))
 }
 
 #[tokio::main]
@@ -79,7 +79,7 @@ async fn main() -> Result<(), std::io::Error> {
         .at("/", get(index))
         .at("/nix-cache-info", get(info))
         .at("/:hash<[0-9a-z]+>.narinfo", get(narinfo))
-        .at("/nar/:hash<[0-9a-z]+>.nar", get(nar));
+        .at("/nar/:hash<[0-9a-z]+>.nar.zst", get(nar));
     Server::new(TcpListener::bind("127.0.0.1:3000"))
         .run(app)
         .await
