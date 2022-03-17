@@ -1,7 +1,7 @@
 use futures::stream::StreamExt;
 use indoc::indoc;
 use poem::{
-    get, handler, listener::TcpListener, web::Path, Body, IntoResponse, Response, Route, Server,
+    get, handler, listener::TcpListener, web::Path, Body, Response, Route, Server,
 };
 
 #[handler]
@@ -25,7 +25,7 @@ async fn info() -> Response {
 }
 
 fn format_pair(key: &str, value: &str) -> Option<String> {
-    if value == "" {
+    if value.is_empty() {
         None
     } else {
         Some(format!("{}: {}", key, value))
@@ -47,8 +47,8 @@ async fn narinfo(Path(hash): Path<String>) -> Response {
             format_pair("Deriver", &pathinfo.deriver),
             format_pair("CA", &pathinfo.ca),
         ]
-        .into_iter().chain(pathinfo.sigs.iter().map(|x| format_pair("Sig", &x))).chain([Some(String::from(""))].into_iter())
-        .filter_map(|x| x)
+        .into_iter().chain(pathinfo.sigs.iter().map(|x| format_pair("Sig", x))).chain([Some(String::from(""))].into_iter())
+        .flatten()
         .collect::<Vec<String>>()
         .join("\n"),
     )
