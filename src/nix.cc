@@ -62,4 +62,12 @@ void narFromHashPart(
   store->narFromPath(*path, sink);
 }
 
+rust::String getBuildLog(Store store, rust::Str path) {
+   auto storepath = nix::StorePath(std::string(path));
+   auto log = store->getBuildLog(storepath);
+   if (!log)
+     throw std::invalid_argument("error: no log for path");
+   return *log;
+}
+
 }  // namespace carinae

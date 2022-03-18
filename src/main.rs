@@ -97,6 +97,14 @@ async fn nar(Path(hash): Path<String>, args: Data<&Args>) -> Result<impl IntoRes
         )))
 }
 
+#[handler]
+async fn log(Path(path): Path<String>, args: Data<&Args>) -> Result<impl IntoResponse> {
+    let store = crate::ffi::openStore(&args.store).map_err(|e| error::InternalServerError(e))?;
+    Ok(Response::builder()
+        .content_type("text/plain; charset=utf-8")
+        .body(crate::ffi::getBuildLog(store, &path).map_err(|e| error::NotFound(e))?))
+}
+
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
     let args: Args = argh::from_env();
@@ -105,8 +113,8 @@ async fn main() -> Result<(), std::io::Error> {
         .at("/nix-cache-info", get(info))
         .at("/:hash<[0-9a-z]+>.narinfo", get(narinfo))
         .at("/nar/:hash<[0-9a-z]+>.nar.zst", get(nar))
+        .at("/log/:path", get(log))
         .with(poem::middleware::AddData::new(args.clone()));
-    // TODO: log
     // TODO: realisation
     // TODO: ls
     // TODO: debug info
@@ -148,5 +156,6 @@ mod ffi {
             ctx: Box<NarContext<'a>>,
             send: fn(&mut NarContext<'a>, &'a [u8]) -> bool,
         ) -> Result<()>;
+        fn getBuildLog(store: SharedPtr<Store>, path: &str) -> Result<String>;
     }
 }

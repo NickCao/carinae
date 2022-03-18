@@ -17,4 +17,5 @@ void narFromHashPart(
     rust::Str,
     rust::Box<NarContext>,
     rust::Fn<bool(NarContext&, rust::Slice<const rust::u8>)>);
+rust::String getBuildLog(Store, rust::Str);
 }  // namespace carinae
