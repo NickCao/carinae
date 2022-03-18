@@ -12,10 +12,9 @@ typedef std::shared_ptr<nix::Store> Store;
 Store openStore(rust::Str);
 rust::String storeDir(Store);
 PathInfo queryPathInfoFromHashPart(Store, rust::Str, rust::Str);
-void narFromHashPart(
-    Store,
-    rust::Str,
-    rust::Box<NarContext>,
-    rust::Fn<bool(NarContext&, rust::Slice<const rust::u8>)>);
+void narFromHashPart(Store,
+                     rust::Str,
+                     rust::Box<NarContext>,
+                     rust::Fn<bool(NarContext&, rust::Slice<const rust::u8>)>);
 rust::String getBuildLog(Store, rust::Str);
 }  // namespace carinae

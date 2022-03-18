@@ -127,12 +127,12 @@ pub struct NarContext<'a>(tokio::sync::mpsc::Sender<&'a [u8]>);
 mod ffi {
     struct PathInfo {
         path: String,
-        deriver: String, // FIXME: Option<String>
+        deriver: String,
         nar_hash: String,
         references: String,
         nar_size: u64,
         sigs: Vec<String>,
-        ca: String, // FIXME: Option<String>
+        ca: String,
     }
     extern "Rust" {
         type NarContext<'a>;

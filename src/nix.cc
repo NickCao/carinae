@@ -9,9 +9,7 @@ rust::String storeDir(Store store) {
   return store->storeDir;
 }
 
-PathInfo queryPathInfoFromHashPart(Store store,
-                                    rust::Str hash,
-                                    rust::Str key) {
+PathInfo queryPathInfoFromHashPart(Store store, rust::Str hash, rust::Str key) {
   auto path = store->queryPathFromHashPart(std::string(hash));
   if (!path)
     throw std::invalid_argument("error: path invalid");
@@ -34,22 +32,6 @@ PathInfo queryPathInfoFromHashPart(Store store,
   };
 }
 
-struct RustSink : nix::Sink {
- public:
-  rust::Box<NarContext>* ctx;
-  rust::Fn<bool(NarContext& ctx, rust::Slice<const rust::u8>)>* send;
-  bool status;
-  RustSink(rust::Box<NarContext>* ctx,
-           rust::Fn<bool(NarContext& ctx, rust::Slice<const rust::u8>)>* send,
-           bool status)
-      : ctx(ctx), send(send), status(status){};
-  void operator()(std::string_view data) {
-    status =
-        (*send)(**ctx, rust::Slice((const rust::u8*)data.data(), data.size()));
-  };
-  bool good() { return status; }
-};
-
 void narFromHashPart(
     Store store,
     rust::Str hash,
@@ -58,16 +40,18 @@ void narFromHashPart(
   auto path = store->queryPathFromHashPart(std::string(hash));
   if (!path)
     throw std::invalid_argument("error: path invalid");
-  auto sink = RustSink{&ctx, &send, true};
+  auto sink = nix::LambdaSink([&ctx, &send](std::string_view data) {
+    (send)(*ctx, rust::Slice((const rust::u8*)data.data(), data.size()));
+  });
   store->narFromPath(*path, sink);
 }
 
 rust::String getBuildLog(Store store, rust::Str path) {
-   auto storepath = nix::StorePath(std::string(path));
-   auto log = store->getBuildLog(storepath);
-   if (!log)
-     throw std::invalid_argument("error: no log for path");
-   return *log;
+  auto storepath = nix::StorePath(std::string(path));
+  auto log = store->getBuildLog(storepath);
+  if (!log)
+    throw std::invalid_argument("error: no log for path");
+  return *log;
 }
 
 }  // namespace carinae
