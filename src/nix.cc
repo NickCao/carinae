@@ -1,7 +1,7 @@
 #include "carinae/include/nix.hh"
 
 namespace carinae {
-std::shared_ptr<nix::Store> nixOpenStore(rust::String uri) {
+std::shared_ptr<nix::Store> nixOpenStore(rust::Str uri) {
   return nix::openStore(std::string(uri));
 }
 
@@ -10,7 +10,7 @@ rust::String nixStoreDir(std::shared_ptr<nix::Store> store) {
 }
 
 NixPathInfo nixPathInfoFromHashPart(std::shared_ptr<nix::Store> store,
-                                    rust::String hash, rust::String key) {
+                                    rust::Str hash, rust::Str key) {
   auto path = store->queryPathFromHashPart(std::string(hash));
   if (!path)
     throw std::invalid_argument("error: path invalid");
@@ -52,7 +52,7 @@ struct RustSink : nix::Sink {
 
 void nixNarFromHashPart(
     std::shared_ptr<nix::Store> store,
-    rust::String hash,
+    rust::Str hash,
     rust::Box<NarContext> ctx,
     rust::Fn<bool(NarContext& ctx, rust::Vec<rust::u8>)> send) {
   auto path = store->queryPathFromHashPart(std::string(hash));

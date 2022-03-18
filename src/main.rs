@@ -27,7 +27,7 @@ async fn index() -> Result<impl IntoResponse> {
 #[handler]
 async fn info(args: Data<&Args>) -> Result<impl IntoResponse> {
     let store =
-        crate::ffi::nixOpenStore(args.store.clone()).map_err(|e| error::InternalServerError(e))?;
+        crate::ffi::nixOpenStore(&args.store).map_err(|e| error::InternalServerError(e))?;
     Ok(Response::builder()
         .content_type("text/x-nix-cache-info")
         .body(format!(
@@ -51,11 +51,11 @@ fn format_pair(key: &str, value: &str) -> Option<String> {
 #[handler]
 async fn narinfo(Path(hash): Path<String>, args: Data<&Args>) -> Result<impl IntoResponse> {
     let store =
-        crate::ffi::nixOpenStore(args.store.clone()).map_err(|e| error::InternalServerError(e))?;
+        crate::ffi::nixOpenStore(&args.store).map_err(|e| error::InternalServerError(e))?;
     let pathinfo = crate::ffi::nixPathInfoFromHashPart(
         store,
-        hash.clone(),
-        std::env::var("CARINAE_SECRET_KEY").unwrap_or(String::from("")),
+        &hash,
+        &std::env::var("CARINAE_SECRET_KEY").unwrap_or(String::from("")),
     )
     .map_err(|e| error::NotFound(e))?;
     Ok(Response::builder().content_type("text/x-nix-narinfo").body(
@@ -84,8 +84,8 @@ async fn nar(Path(hash): Path<String>, args: Data<&Args>) -> Result<impl IntoRes
     let ctx = Box::new(NarContext(tx));
     let store = args.store.clone();
     tokio::task::spawn_blocking(move || {
-        let store = crate::ffi::nixOpenStore(store)?;
-        crate::ffi::nixNarFromHashPart(store, hash, ctx, |ctx1, data| {
+        let store = crate::ffi::nixOpenStore(&store)?;
+        crate::ffi::nixNarFromHashPart(store, &hash, ctx, |ctx1, data| {
             ctx1.0.blocking_send(data).is_ok()
         })
     });
@@ -137,16 +137,16 @@ mod ffi {
         type Store;
     }
     unsafe extern "C++" {
-        fn nixOpenStore(uri: String) -> Result<SharedPtr<Store>>;
+        fn nixOpenStore(uri: &str) -> Result<SharedPtr<Store>>;
         fn nixStoreDir(store: SharedPtr<Store>) -> String;
         fn nixPathInfoFromHashPart(
             store: SharedPtr<Store>,
-            hash: String,
-            key: String,
+            hash: &str,
+            key: &str,
         ) -> Result<NixPathInfo>;
         fn nixNarFromHashPart(
             store: SharedPtr<Store>,
-            hash: String,
+            hash: &str,
             ctx: Box<NarContext>,
             send: fn(&mut NarContext, Vec<u8>) -> bool,
         ) -> Result<()>;
