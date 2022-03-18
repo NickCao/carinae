@@ -9,10 +9,10 @@
 
 namespace carinae {
 typedef std::shared_ptr<nix::Store> Store;
-Store nixOpenStore(rust::Str);
-rust::String nixStoreDir(Store);
-NixPathInfo nixPathInfoFromHashPart(Store, rust::Str, rust::Str);
-void nixNarFromHashPart(
+Store openStore(rust::Str);
+rust::String storeDir(Store);
+PathInfo queryPathInfoFromHashPart(Store, rust::Str, rust::Str);
+void narFromHashPart(
     Store,
     rust::Str,
     rust::Box<NarContext>,

@@ -26,7 +26,7 @@ async fn index() -> Result<impl IntoResponse> {
 
 #[handler]
 async fn info(args: Data<&Args>) -> Result<impl IntoResponse> {
-    let store = crate::ffi::nixOpenStore(&args.store).map_err(|e| error::InternalServerError(e))?;
+    let store = crate::ffi::openStore(&args.store).map_err(|e| error::InternalServerError(e))?;
     Ok(Response::builder()
         .content_type("text/x-nix-cache-info")
         .body(format!(
@@ -35,7 +35,7 @@ async fn info(args: Data<&Args>) -> Result<impl IntoResponse> {
             WantMassQuery: 1
             Priority: 30
         "},
-            crate::ffi::nixStoreDir(store)
+            crate::ffi::storeDir(store)
         )))
 }
 
@@ -49,8 +49,8 @@ fn format_pair(key: &str, value: &str) -> Option<String> {
 
 #[handler]
 async fn narinfo(Path(hash): Path<String>, args: Data<&Args>) -> Result<impl IntoResponse> {
-    let store = crate::ffi::nixOpenStore(&args.store).map_err(|e| error::InternalServerError(e))?;
-    let pathinfo = crate::ffi::nixPathInfoFromHashPart(
+    let store = crate::ffi::openStore(&args.store).map_err(|e| error::InternalServerError(e))?;
+    let pathinfo = crate::ffi::queryPathInfoFromHashPart(
         store,
         &hash,
         &std::env::var("CARINAE_SECRET_KEY").unwrap_or(String::from("")),
@@ -82,8 +82,8 @@ async fn nar(Path(hash): Path<String>, args: Data<&Args>) -> Result<impl IntoRes
     let ctx = Box::new(NarContext(tx));
     let store = args.store.clone();
     tokio::task::spawn_blocking(move || {
-        let store = crate::ffi::nixOpenStore(&store)?;
-        crate::ffi::nixNarFromHashPart(store, &hash, ctx, |ctx1, data| {
+        let store = crate::ffi::openStore(&store)?;
+        crate::ffi::narFromHashPart(store, &hash, ctx, |ctx1, data| {
             ctx1.0.blocking_send(data).is_ok()
         })
     });
@@ -117,7 +117,7 @@ pub struct NarContext<'a>(tokio::sync::mpsc::Sender<&'a [u8]>);
 
 #[cxx::bridge(namespace = "carinae")]
 mod ffi {
-    struct NixPathInfo {
+    struct PathInfo {
         path: String,
         deriver: String, // FIXME: Option<String>
         nar_hash: String,
@@ -135,14 +135,14 @@ mod ffi {
         type Store;
     }
     unsafe extern "C++" {
-        fn nixOpenStore(uri: &str) -> Result<SharedPtr<Store>>;
-        fn nixStoreDir(store: SharedPtr<Store>) -> String;
-        fn nixPathInfoFromHashPart(
+        fn openStore(uri: &str) -> Result<SharedPtr<Store>>;
+        fn storeDir(store: SharedPtr<Store>) -> String;
+        fn queryPathInfoFromHashPart(
             store: SharedPtr<Store>,
             hash: &str,
             key: &str,
-        ) -> Result<NixPathInfo>;
-        fn nixNarFromHashPart<'a>(
+        ) -> Result<PathInfo>;
+        fn narFromHashPart<'a>(
             store: SharedPtr<Store>,
             hash: &str,
             ctx: Box<NarContext<'a>>,

@@ -1,15 +1,15 @@
 #include "carinae/include/nix.hh"
 
 namespace carinae {
-Store nixOpenStore(rust::Str uri) {
+Store openStore(rust::Str uri) {
   return nix::openStore(std::string(uri));
 }
 
-rust::String nixStoreDir(Store store) {
+rust::String storeDir(Store store) {
   return store->storeDir;
 }
 
-NixPathInfo nixPathInfoFromHashPart(Store store,
+PathInfo queryPathInfoFromHashPart(Store store,
                                     rust::Str hash,
                                     rust::Str key) {
   auto path = store->queryPathFromHashPart(std::string(hash));
@@ -23,7 +23,7 @@ NixPathInfo nixPathInfoFromHashPart(Store store,
     sigs.push_back(nix::SecretKey(std::string(key))
                        .signDetached(pathinfo->fingerprint(*store)));
   }
-  return NixPathInfo{
+  return PathInfo{
       store->printStorePath(pathinfo->path),
       pathinfo->deriver ? std::string(pathinfo->deriver->to_string()) : "",
       pathinfo->narHash.to_string(nix::Base32, true),
@@ -50,7 +50,7 @@ struct RustSink : nix::Sink {
   bool good() { return status; }
 };
 
-void nixNarFromHashPart(
+void narFromHashPart(
     Store store,
     rust::Str hash,
     rust::Box<NarContext> ctx,
