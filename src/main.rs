@@ -78,7 +78,7 @@ async fn narinfo(Path(hash): Path<String>, args: Data<&Args>) -> Result<impl Int
 
 #[handler]
 async fn nar(Path(hash): Path<String>, args: Data<&Args>) -> Result<impl IntoResponse> {
-    let (tx, rx) = tokio::sync::mpsc::channel(2048);
+    let (tx, rx) = tokio::sync::mpsc::channel(1);
     let ctx = Box::new(NarContext(tx));
     let store = args.store.clone();
     tokio::task::spawn_blocking(move || {
@@ -92,7 +92,7 @@ async fn nar(Path(hash): Path<String>, args: Data<&Args>) -> Result<impl IntoRes
         .body(Body::from_async_read(
             async_compression::tokio::bufread::ZstdEncoder::new(tokio_util::io::StreamReader::new(
                 tokio_stream::wrappers::ReceiverStream::new(rx)
-                    .map(|x| Result::<_, std::io::Error>::Ok(x)),
+                    .map(|x| Result::<_, std::io::Error>::Ok(std::collections::VecDeque::from(x))),
             )),
         )))
 }
@@ -121,7 +121,7 @@ async fn main() -> Result<(), std::io::Error> {
     Server::new(TcpListener::bind(args.listen)).run(app).await
 }
 
-pub struct NarContext<'a>(tokio::sync::mpsc::Sender<&'a [u8]>);
+pub struct NarContext(tokio::sync::mpsc::Sender<Vec<u8>>);
 
 #[cxx::bridge(namespace = "carinae")]
 mod ffi {
@@ -135,7 +135,7 @@ mod ffi {
         ca: String,
     }
     extern "Rust" {
-        type NarContext<'a>;
+        type NarContext;
     }
     #[namespace = "nix"]
     unsafe extern "C++" {
@@ -150,11 +150,11 @@ mod ffi {
             hash: &str,
             key: &str,
         ) -> Result<PathInfo>;
-        fn narFromHashPart<'a>(
+        fn narFromHashPart(
             store: SharedPtr<Store>,
             hash: &str,
-            ctx: Box<NarContext<'a>>,
-            send: fn(&mut NarContext<'a>, &'a [u8]) -> bool,
+            ctx: Box<NarContext>,
+            send: fn(&mut NarContext, Vec<u8>) -> bool,
         ) -> Result<()>;
         fn getBuildLog(store: SharedPtr<Store>, path: &str) -> Result<String>;
     }

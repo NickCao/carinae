@@ -32,16 +32,17 @@ PathInfo queryPathInfoFromHashPart(Store store, rust::Str hash, rust::Str key) {
   };
 }
 
-void narFromHashPart(
-    Store store,
-    rust::Str hash,
-    rust::Box<NarContext> ctx,
-    rust::Fn<bool(NarContext& ctx, rust::Slice<const rust::u8>)> send) {
+void narFromHashPart(Store store,
+                     rust::Str hash,
+                     rust::Box<NarContext> ctx,
+                     rust::Fn<bool(NarContext& ctx, rust::Vec<uint8_t>)> send) {
   auto path = store->queryPathFromHashPart(std::string(hash));
   if (!path)
     throw std::invalid_argument("error: path invalid");
   auto sink = nix::LambdaSink([&ctx, &send](std::string_view data) {
-    (send)(*ctx, rust::Slice((const rust::u8*)data.data(), data.size()));
+    rust::Vec<uint8_t> d;
+    std::copy(data.begin(), data.end(), std::back_inserter(d));
+    (send)(*ctx, d);
   });
   store->narFromPath(*path, sink);
 }

@@ -15,6 +15,6 @@ PathInfo queryPathInfoFromHashPart(Store, rust::Str, rust::Str);
 void narFromHashPart(Store,
                      rust::Str,
                      rust::Box<NarContext>,
-                     rust::Fn<bool(NarContext&, rust::Slice<const rust::u8>)>);
+                     rust::Fn<bool(NarContext&, rust::Vec<uint8_t>)>);
 rust::String getBuildLog(Store, rust::Str);
 }  // namespace carinae
