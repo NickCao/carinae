@@ -8,11 +8,13 @@
 #include "carinae/src/main.rs.h"
 
 namespace carinae {
-std::shared_ptr<nix::Store> nixOpenStore(rust::Str);
-rust::String nixStoreDir(std::shared_ptr<nix::Store>);
-NixPathInfo nixPathInfoFromHashPart(std::shared_ptr<nix::Store>, rust::Str, rust::Str);
-void nixNarFromHashPart(std::shared_ptr<nix::Store>,
-                        rust::Str,
-                        rust::Box<NarContext>,
-                        rust::Fn<bool(NarContext&, rust::Slice<const rust::u8>)>);
+typedef std::shared_ptr<nix::Store> Store;
+Store nixOpenStore(rust::Str);
+rust::String nixStoreDir(Store);
+NixPathInfo nixPathInfoFromHashPart(Store, rust::Str, rust::Str);
+void nixNarFromHashPart(
+    Store,
+    rust::Str,
+    rust::Box<NarContext>,
+    rust::Fn<bool(NarContext&, rust::Slice<const rust::u8>)>);
 }  // namespace carinae

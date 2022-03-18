@@ -1,16 +1,17 @@
 #include "carinae/include/nix.hh"
 
 namespace carinae {
-std::shared_ptr<nix::Store> nixOpenStore(rust::Str uri) {
+Store nixOpenStore(rust::Str uri) {
   return nix::openStore(std::string(uri));
 }
 
-rust::String nixStoreDir(std::shared_ptr<nix::Store> store) {
+rust::String nixStoreDir(Store store) {
   return store->storeDir;
 }
 
-NixPathInfo nixPathInfoFromHashPart(std::shared_ptr<nix::Store> store,
-                                    rust::Str hash, rust::Str key) {
+NixPathInfo nixPathInfoFromHashPart(Store store,
+                                    rust::Str hash,
+                                    rust::Str key) {
   auto path = store->queryPathFromHashPart(std::string(hash));
   if (!path)
     throw std::invalid_argument("error: path invalid");
@@ -19,7 +20,8 @@ NixPathInfo nixPathInfoFromHashPart(std::shared_ptr<nix::Store> store,
   for (auto sig : pathinfo->sigs)
     sigs.push_back(rust::String(sig));
   if (!key.empty()) {
-    sigs.push_back(nix::SecretKey(std::string(key)).signDetached(pathinfo->fingerprint(*store)));
+    sigs.push_back(nix::SecretKey(std::string(key))
+                       .signDetached(pathinfo->fingerprint(*store)));
   }
   return NixPathInfo{
       store->printStorePath(pathinfo->path),
@@ -42,13 +44,14 @@ struct RustSink : nix::Sink {
            bool status)
       : ctx(ctx), send(send), status(status){};
   void operator()(std::string_view data) {
-    status = (*send)(**ctx, rust::Slice((const rust::u8*) data.data(), data.size()));
+    status =
+        (*send)(**ctx, rust::Slice((const rust::u8*)data.data(), data.size()));
   };
   bool good() { return status; }
 };
 
 void nixNarFromHashPart(
-    std::shared_ptr<nix::Store> store,
+    Store store,
     rust::Str hash,
     rust::Box<NarContext> ctx,
     rust::Fn<bool(NarContext& ctx, rust::Slice<const rust::u8>)> send) {
