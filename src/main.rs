@@ -1,12 +1,13 @@
 use argh::FromArgs;
 use futures::stream::StreamExt;
 use indoc::indoc;
+use poem::EndpointExt;
 use poem::{
-    error, get, handler, listener::TcpListener, web::Path, Body, IntoResponse, Response, Result,
-    Route, Server,
+    error, get, handler, listener::TcpListener, web::Data, web::Path, Body, IntoResponse, Response,
+    Result, Route, Server,
 };
 
-#[derive(FromArgs)]
+#[derive(FromArgs, Clone)]
 /// serve any nix store as a binary cache
 struct Args {
     /// address to listen on (default: 127.0.0.1:3000)
@@ -16,6 +17,10 @@ struct Args {
     /// store to serve (default: daemon)
     #[argh(option, default = "String::from(\"daemon\")")]
     store: String,
+
+    /// key to sign paths
+    #[argh(option)]
+    key: Option<String>,
 }
 
 #[handler]
@@ -24,9 +29,9 @@ async fn index() -> Result<impl IntoResponse> {
 }
 
 #[handler]
-async fn info() -> Result<impl IntoResponse> {
-    let store = crate::ffi::nixOpenStore(String::from("daemon"))
-        .map_err(|e| error::InternalServerError(e))?;
+async fn info(args: Data<&Args>) -> Result<impl IntoResponse> {
+    let store =
+        crate::ffi::nixOpenStore(args.store.clone()).map_err(|e| error::InternalServerError(e))?;
     Ok(Response::builder()
         .content_type("text/x-nix-cache-info")
         .body(format!(
@@ -48,10 +53,15 @@ fn format_pair(key: &str, value: &str) -> Option<String> {
 }
 
 #[handler]
-async fn narinfo(Path(hash): Path<String>) -> Result<impl IntoResponse> {
-    let store = crate::ffi::nixOpenStore(String::from("daemon"))
-        .map_err(|e| error::InternalServerError(e))?;
-    let pathinfo = crate::ffi::nixPathInfoFromHashPart(store, hash.clone(), String::from("example.com-0:TvsilDIv/stzErQtF5xwS/g4gkOeBh8DY9yyAH7wD5IYoGi3K1bzzZdrpkrn3ruES6T5gFFigXHnaNCQcbyjpw==")).map_err(|e| error::NotFound(e))?;
+async fn narinfo(Path(hash): Path<String>, args: Data<&Args>) -> Result<impl IntoResponse> {
+    let store =
+        crate::ffi::nixOpenStore(args.store.clone()).map_err(|e| error::InternalServerError(e))?;
+    let pathinfo = crate::ffi::nixPathInfoFromHashPart(
+        store,
+        hash.clone(),
+        args.key.as_ref().unwrap_or(&String::from("")).clone(),
+    )
+    .map_err(|e| error::NotFound(e))?;
     Ok(Response::builder().content_type("text/x-nix-narinfo").body(
         [
             format_pair("StorePath", &pathinfo.path),
@@ -73,11 +83,12 @@ async fn narinfo(Path(hash): Path<String>) -> Result<impl IntoResponse> {
 }
 
 #[handler]
-async fn nar(Path(hash): Path<String>) -> Result<impl IntoResponse> {
+async fn nar(Path(hash): Path<String>, args: Data<&Args>) -> Result<impl IntoResponse> {
     let (tx, rx) = tokio::sync::mpsc::channel(2048);
     let ctx = Box::new(NarContext(tx));
-    tokio::task::spawn_blocking(|| {
-        let store = crate::ffi::nixOpenStore(String::from("daemon"))?;
+    let store = args.store.clone();
+    tokio::task::spawn_blocking(move || {
+        let store = crate::ffi::nixOpenStore(store)?;
         crate::ffi::nixNarFromHashPart(store, hash, ctx, |ctx1, data| {
             ctx1.0.blocking_send(data).is_ok()
         })
@@ -99,8 +110,8 @@ async fn main() -> Result<(), std::io::Error> {
         .at("/", get(index))
         .at("/nix-cache-info", get(info))
         .at("/:hash<[0-9a-z]+>.narinfo", get(narinfo))
-        .at("/nar/:hash<[0-9a-z]+>.nar.zst", get(nar));
-    // TODO: flags
+        .at("/nar/:hash<[0-9a-z]+>.nar.zst", get(nar))
+        .with(poem::middleware::AddData::new(args.clone()));
     // TODO: log
     // TODO: realisation
     // TODO: ls
