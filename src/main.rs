@@ -1,9 +1,22 @@
+use argh::FromArgs;
 use futures::stream::StreamExt;
 use indoc::indoc;
 use poem::{
     error, get, handler, listener::TcpListener, web::Path, Body, IntoResponse, Response, Result,
     Route, Server,
 };
+
+#[derive(FromArgs)]
+/// serve any nix store as a binary cache
+struct Args {
+    /// address to listen on (default: 127.0.0.1:3000)
+    #[argh(option, short = 'l', default = "String::from(\"127.0.0.1:3000\")")]
+    listen: String,
+
+    /// store to serve (default: daemon)
+    #[argh(option, default = "String::from(\"daemon\")")]
+    store: String,
+}
 
 #[handler]
 async fn index() -> Result<impl IntoResponse> {
@@ -81,6 +94,7 @@ async fn nar(Path(hash): Path<String>) -> Result<impl IntoResponse> {
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
+    let args: Args = argh::from_env();
     let app = Route::new()
         .at("/", get(index))
         .at("/nix-cache-info", get(info))
@@ -91,9 +105,7 @@ async fn main() -> Result<(), std::io::Error> {
     // TODO: realisation
     // TODO: ls
     // TODO: debug info
-    Server::new(TcpListener::bind("127.0.0.1:3000"))
-        .run(app)
-        .await
+    Server::new(TcpListener::bind(args.listen)).run(app).await
 }
 
 pub struct NarContext(tokio::sync::mpsc::Sender<Vec<u8>>);
