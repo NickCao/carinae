@@ -1,18 +1,19 @@
 use futures::stream::StreamExt;
 use indoc::indoc;
 use poem::{
-    get, handler, listener::TcpListener, web::Path, Body, Response, Route, Server,
+    get, handler, listener::TcpListener, web::Path, Body, Response, Route, Server, IntoResponse,
+    error, Result
 };
 
 #[handler]
-async fn index() -> &'static str {
-    "this is carinae, a nix binary cache"
+async fn index() -> Result<impl IntoResponse> {
+    Ok("this is carinae, a nix binary cache")
 }
 
 #[handler]
-async fn info() -> Response {
-    let store = crate::ffi::nixOpenStore(String::from("daemon")).unwrap();
-    Response::builder()
+async fn info() -> Result<impl IntoResponse> {
+    let store = crate::ffi::nixOpenStore(String::from("daemon")).map_err(|e| error::InternalServerError(e))?;
+    Ok(Response::builder()
         .content_type("text/x-nix-cache-info")
         .body(format!(
             indoc! {"
@@ -21,7 +22,7 @@ async fn info() -> Response {
             Priority: 30
         "},
             crate::ffi::nixStoreDir(store)
-        ))
+        )))
 }
 
 fn format_pair(key: &str, value: &str) -> Option<String> {
@@ -33,10 +34,10 @@ fn format_pair(key: &str, value: &str) -> Option<String> {
 }
 
 #[handler]
-async fn narinfo(Path(hash): Path<String>) -> Response {
-    let store = crate::ffi::nixOpenStore(String::from("daemon")).unwrap();
-    let pathinfo = crate::ffi::nixPathInfoFromHashPart(store, hash.clone()).unwrap();
-    Response::builder().content_type("text/x-nix-narinfo").body(
+async fn narinfo(Path(hash): Path<String>) -> Result<impl IntoResponse> {
+    let store = crate::ffi::nixOpenStore(String::from("daemon")).map_err(|e| error::InternalServerError(e))?;
+    let pathinfo = crate::ffi::nixPathInfoFromHashPart(store, hash.clone()).map_err(|e| error::NotFound(e))?;
+    Ok(Response::builder().content_type("text/x-nix-narinfo").body(
         [
             format_pair("StorePath", &pathinfo.path),
             format_pair("URL", &format!("nar/{}.nar.zst", &hash)),
@@ -51,26 +52,26 @@ async fn narinfo(Path(hash): Path<String>) -> Response {
         .flatten()
         .collect::<Vec<String>>()
         .join("\n"),
-    )
+    ))
 }
 
 #[handler]
-async fn nar(Path(hash): Path<String>) -> Response {
+async fn nar(Path(hash): Path<String>) -> Result<impl IntoResponse> {
     let (tx, rx) = tokio::sync::mpsc::channel(2048);
     let ctx = Box::new(NarContext(tx));
     tokio::task::spawn_blocking(|| {
-        let store = crate::ffi::nixOpenStore(String::from("daemon")).unwrap();
+        let store = crate::ffi::nixOpenStore(String::from("daemon"))?;
         crate::ffi::nixNarFromHashPart(store, hash, ctx, |ctx1, data| {
             ctx1.0.blocking_send(data).is_ok()
         })
     });
-    Response::builder()
+   Ok(Response::builder()
         .content_type("application/x-nix-nar")
         .body(Body::from_async_read(
             async_compression::tokio::bufread::ZstdEncoder::new(tokio_util::io::StreamReader::new(
             tokio_stream::wrappers::ReceiverStream::new(rx)
                 .map(|x| Result::<_, std::io::Error>::Ok(std::collections::VecDeque::from(x)))),
-        )))
+        ))))
 }
 
 #[tokio::main]

@@ -13,7 +13,7 @@ NixPathInfo nixPathInfoFromHashPart(std::shared_ptr<nix::Store> store,
                                     rust::String hash) {
   auto path = store->queryPathFromHashPart(std::string(hash));
   if (!path)
-    throw std::invalid_argument("path invalid");
+    throw std::invalid_argument("error: path invalid");
   auto pathinfo = store->queryPathInfo(*path);
   rust::Vec<rust::String> sigs;
   for (auto sig : pathinfo->sigs)
@@ -54,7 +54,7 @@ void nixNarFromHashPart(
     rust::Fn<bool(NarContext& ctx, rust::Vec<rust::u8>)> send) {
   auto path = store->queryPathFromHashPart(std::string(hash));
   if (!path)
-    throw std::invalid_argument("path invalid");
+    throw std::invalid_argument("error: path invalid");
   auto sink = RustSink{&ctx, &send, true};
   store->narFromPath(*path, sink);
 }
