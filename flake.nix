@@ -17,15 +17,17 @@
             overlays = [ rust-overlay.overlay ];
           };
         in
-        {
+        rec {
           devShell = pkgs.mkShell {
-            nativeBuildInputs = [
-              (pkgs.rust-bin.selectLatestNightlyWith (toolchain:
-                toolchain.default.override {
-                  extensions = [ "rust-analyzer-preview" ];
-                }))
-              pkgs.rustPlatform.bindgenHook
-            ];
+            inputsFrom = [ packages.default ];
+          };
+          packages.default = pkgs.rustPlatform.buildRustPackage {
+            name = "carinae";
+            src = self;
+            cargoLock = {
+              lockFile = ./Cargo.lock;
+            };
+            nativeBuildInputs = with pkgs;[ rustPlatform.bindgenHook ];
             buildInputs = with pkgs;[ nixVersions.stable boost ];
           };
         }

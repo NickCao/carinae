@@ -16,11 +16,7 @@ struct Args {
 
     /// store to serve (default: daemon)
     #[argh(option, default = "String::from(\"daemon\")")]
-    store: String,
-
-    /// key to sign paths
-    #[argh(option)]
-    key: Option<String>,
+    store: String
 }
 
 #[handler]
@@ -59,7 +55,7 @@ async fn narinfo(Path(hash): Path<String>, args: Data<&Args>) -> Result<impl Int
     let pathinfo = crate::ffi::nixPathInfoFromHashPart(
         store,
         hash.clone(),
-        args.key.as_ref().unwrap_or(&String::from("")).clone(),
+        std::env::var("CARINAE_SECRET_KEY").unwrap_or(String::from("")),
     )
     .map_err(|e| error::NotFound(e))?;
     Ok(Response::builder().content_type("text/x-nix-narinfo").body(
