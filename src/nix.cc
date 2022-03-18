@@ -35,17 +35,14 @@ NixPathInfo nixPathInfoFromHashPart(std::shared_ptr<nix::Store> store,
 struct RustSink : nix::Sink {
  public:
   rust::Box<NarContext>* ctx;
-  rust::Fn<bool(NarContext& ctx, rust::Vec<rust::u8>)>* send;
+  rust::Fn<bool(NarContext& ctx, rust::Slice<const rust::u8>)>* send;
   bool status;
   RustSink(rust::Box<NarContext>* ctx,
-           rust::Fn<bool(NarContext& ctx, rust::Vec<rust::u8>)>* send,
+           rust::Fn<bool(NarContext& ctx, rust::Slice<const rust::u8>)>* send,
            bool status)
       : ctx(ctx), send(send), status(status){};
   void operator()(std::string_view data) {
-    rust::Vec<rust::u8> ser;
-    for (auto d : data)
-      ser.push_back(d);
-    status = (*send)(**ctx, ser);
+    status = (*send)(**ctx, rust::Slice((const rust::u8*) data.data(), data.size()));
   };
   bool good() { return status; }
 };
@@ -54,7 +51,7 @@ void nixNarFromHashPart(
     std::shared_ptr<nix::Store> store,
     rust::Str hash,
     rust::Box<NarContext> ctx,
-    rust::Fn<bool(NarContext& ctx, rust::Vec<rust::u8>)> send) {
+    rust::Fn<bool(NarContext& ctx, rust::Slice<const rust::u8>)> send) {
   auto path = store->queryPathFromHashPart(std::string(hash));
   if (!path)
     throw std::invalid_argument("error: path invalid");

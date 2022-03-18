@@ -16,7 +16,7 @@ struct Args {
 
     /// store to serve (default: daemon)
     #[argh(option, default = "String::from(\"daemon\")")]
-    store: String
+    store: String,
 }
 
 #[handler]
@@ -26,8 +26,7 @@ async fn index() -> Result<impl IntoResponse> {
 
 #[handler]
 async fn info(args: Data<&Args>) -> Result<impl IntoResponse> {
-    let store =
-        crate::ffi::nixOpenStore(&args.store).map_err(|e| error::InternalServerError(e))?;
+    let store = crate::ffi::nixOpenStore(&args.store).map_err(|e| error::InternalServerError(e))?;
     Ok(Response::builder()
         .content_type("text/x-nix-cache-info")
         .body(format!(
@@ -50,8 +49,7 @@ fn format_pair(key: &str, value: &str) -> Option<String> {
 
 #[handler]
 async fn narinfo(Path(hash): Path<String>, args: Data<&Args>) -> Result<impl IntoResponse> {
-    let store =
-        crate::ffi::nixOpenStore(&args.store).map_err(|e| error::InternalServerError(e))?;
+    let store = crate::ffi::nixOpenStore(&args.store).map_err(|e| error::InternalServerError(e))?;
     let pathinfo = crate::ffi::nixPathInfoFromHashPart(
         store,
         &hash,
@@ -94,7 +92,7 @@ async fn nar(Path(hash): Path<String>, args: Data<&Args>) -> Result<impl IntoRes
         .body(Body::from_async_read(
             async_compression::tokio::bufread::ZstdEncoder::new(tokio_util::io::StreamReader::new(
                 tokio_stream::wrappers::ReceiverStream::new(rx)
-                    .map(|x| Result::<_, std::io::Error>::Ok(std::collections::VecDeque::from(x))),
+                    .map(|x| Result::<_, std::io::Error>::Ok(x)),
             )),
         )))
 }
@@ -115,7 +113,7 @@ async fn main() -> Result<(), std::io::Error> {
     Server::new(TcpListener::bind(args.listen)).run(app).await
 }
 
-pub struct NarContext(tokio::sync::mpsc::Sender<Vec<u8>>);
+pub struct NarContext<'a>(tokio::sync::mpsc::Sender<&'a [u8]>);
 
 #[cxx::bridge(namespace = "carinae")]
 mod ffi {
@@ -129,7 +127,7 @@ mod ffi {
         ca: String, // FIXME: Option<String>
     }
     extern "Rust" {
-        type NarContext;
+        type NarContext<'a>;
     }
     #[namespace = "nix"]
     unsafe extern "C++" {
@@ -144,11 +142,11 @@ mod ffi {
             hash: &str,
             key: &str,
         ) -> Result<NixPathInfo>;
-        fn nixNarFromHashPart(
+        fn nixNarFromHashPart<'a>(
             store: SharedPtr<Store>,
             hash: &str,
-            ctx: Box<NarContext>,
-            send: fn(&mut NarContext, Vec<u8>) -> bool,
+            ctx: Box<NarContext<'a>>,
+            send: fn(&mut NarContext<'a>, &'a [u8]) -> bool,
         ) -> Result<()>;
     }
 }

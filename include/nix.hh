@@ -14,5 +14,5 @@ NixPathInfo nixPathInfoFromHashPart(std::shared_ptr<nix::Store>, rust::Str, rust
 void nixNarFromHashPart(std::shared_ptr<nix::Store>,
                         rust::Str,
                         rust::Box<NarContext>,
-                        rust::Fn<bool(NarContext&, rust::Vec<rust::u8>)>);
+                        rust::Fn<bool(NarContext&, rust::Slice<const rust::u8>)>);
 }  // namespace carinae
