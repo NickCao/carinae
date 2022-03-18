@@ -42,7 +42,8 @@ void narFromHashPart(Store store,
   auto sink = nix::LambdaSink([&ctx, &send](std::string_view data) {
     rust::Vec<uint8_t> d;
     std::copy(data.begin(), data.end(), std::back_inserter(d));
-    (send)(*ctx, d);
+    if (!(send)(*ctx, d))
+      throw std::invalid_argument("error: cannot send nar");
   });
   store->narFromPath(*path, sink);
 }
