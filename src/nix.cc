@@ -10,7 +10,7 @@ rust::String nixStoreDir(std::shared_ptr<nix::Store> store) {
 }
 
 NixPathInfo nixPathInfoFromHashPart(std::shared_ptr<nix::Store> store,
-                                    rust::String hash) {
+                                    rust::String hash, rust::String key) {
   auto path = store->queryPathFromHashPart(std::string(hash));
   if (!path)
     throw std::invalid_argument("error: path invalid");
@@ -18,6 +18,9 @@ NixPathInfo nixPathInfoFromHashPart(std::shared_ptr<nix::Store> store,
   rust::Vec<rust::String> sigs;
   for (auto sig : pathinfo->sigs)
     sigs.push_back(rust::String(sig));
+  if (!key.empty()) {
+    sigs.push_back(nix::SecretKey(std::string(key)).signDetached(pathinfo->fingerprint(*store)));
+  }
   return NixPathInfo{
       store->printStorePath(pathinfo->path),
       pathinfo->deriver ? std::string(pathinfo->deriver->to_string()) : "",

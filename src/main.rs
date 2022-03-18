@@ -1,8 +1,8 @@
 use futures::stream::StreamExt;
 use indoc::indoc;
 use poem::{
-    get, handler, listener::TcpListener, web::Path, Body, Response, Route, Server, IntoResponse,
-    error, Result
+    error, get, handler, listener::TcpListener, web::Path, Body, IntoResponse, Response, Result,
+    Route, Server,
 };
 
 #[handler]
@@ -12,7 +12,8 @@ async fn index() -> Result<impl IntoResponse> {
 
 #[handler]
 async fn info() -> Result<impl IntoResponse> {
-    let store = crate::ffi::nixOpenStore(String::from("daemon")).map_err(|e| error::InternalServerError(e))?;
+    let store = crate::ffi::nixOpenStore(String::from("daemon"))
+        .map_err(|e| error::InternalServerError(e))?;
     Ok(Response::builder()
         .content_type("text/x-nix-cache-info")
         .body(format!(
@@ -35,8 +36,9 @@ fn format_pair(key: &str, value: &str) -> Option<String> {
 
 #[handler]
 async fn narinfo(Path(hash): Path<String>) -> Result<impl IntoResponse> {
-    let store = crate::ffi::nixOpenStore(String::from("daemon")).map_err(|e| error::InternalServerError(e))?;
-    let pathinfo = crate::ffi::nixPathInfoFromHashPart(store, hash.clone()).map_err(|e| error::NotFound(e))?;
+    let store = crate::ffi::nixOpenStore(String::from("daemon"))
+        .map_err(|e| error::InternalServerError(e))?;
+    let pathinfo = crate::ffi::nixPathInfoFromHashPart(store, hash.clone(), String::from("example.com-0:TvsilDIv/stzErQtF5xwS/g4gkOeBh8DY9yyAH7wD5IYoGi3K1bzzZdrpkrn3ruES6T5gFFigXHnaNCQcbyjpw==")).map_err(|e| error::NotFound(e))?;
     Ok(Response::builder().content_type("text/x-nix-narinfo").body(
         [
             format_pair("StorePath", &pathinfo.path),
@@ -48,7 +50,9 @@ async fn narinfo(Path(hash): Path<String>) -> Result<impl IntoResponse> {
             format_pair("Deriver", &pathinfo.deriver),
             format_pair("CA", &pathinfo.ca),
         ]
-        .into_iter().chain(pathinfo.sigs.iter().map(|x| format_pair("Sig", x))).chain([Some(String::from(""))].into_iter())
+        .into_iter()
+        .chain(pathinfo.sigs.iter().map(|x| format_pair("Sig", x)))
+        .chain([Some(String::from(""))].into_iter())
         .flatten()
         .collect::<Vec<String>>()
         .join("\n"),
@@ -65,13 +69,14 @@ async fn nar(Path(hash): Path<String>) -> Result<impl IntoResponse> {
             ctx1.0.blocking_send(data).is_ok()
         })
     });
-   Ok(Response::builder()
+    Ok(Response::builder()
         .content_type("application/x-nix-nar")
         .body(Body::from_async_read(
             async_compression::tokio::bufread::ZstdEncoder::new(tokio_util::io::StreamReader::new(
-            tokio_stream::wrappers::ReceiverStream::new(rx)
-                .map(|x| Result::<_, std::io::Error>::Ok(std::collections::VecDeque::from(x)))),
-        ))))
+                tokio_stream::wrappers::ReceiverStream::new(rx)
+                    .map(|x| Result::<_, std::io::Error>::Ok(std::collections::VecDeque::from(x))),
+            )),
+        )))
 }
 
 #[tokio::main]
@@ -81,8 +86,7 @@ async fn main() -> Result<(), std::io::Error> {
         .at("/nix-cache-info", get(info))
         .at("/:hash<[0-9a-z]+>.narinfo", get(narinfo))
         .at("/nar/:hash<[0-9a-z]+>.nar.zst", get(nar));
-    // TODO: error handling
-    // TODO: append sig
+    // TODO: flags
     // TODO: log
     // TODO: realisation
     // TODO: ls
@@ -116,7 +120,11 @@ mod ffi {
     unsafe extern "C++" {
         fn nixOpenStore(uri: String) -> Result<SharedPtr<Store>>;
         fn nixStoreDir(store: SharedPtr<Store>) -> String;
-        fn nixPathInfoFromHashPart(store: SharedPtr<Store>, hash: String) -> Result<NixPathInfo>;
+        fn nixPathInfoFromHashPart(
+            store: SharedPtr<Store>,
+            hash: String,
+            key: String,
+        ) -> Result<NixPathInfo>;
         fn nixNarFromHashPart(
             store: SharedPtr<Store>,
             hash: String,
