@@ -4,6 +4,8 @@
 #include "rust/cxx.h"
 #include "nix/nar-info.hh"
 #include "nix/store-api.hh"
+#include "nix/store-cast.hh"
+#include "nix/log-store.hh"
 #include "nix/crypto.hh"
 #include "carinae/src/main.rs.h"
 

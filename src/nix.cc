@@ -49,8 +49,9 @@ void narFromHashPart(Store store,
 }
 
 rust::String getBuildLog(Store store, rust::Str path) {
+  auto & logstore = nix::require<nix::LogStore>(*store);
   auto storepath = nix::StorePath(std::string(path));
-  auto log = store->getBuildLog(storepath);
+  auto log = logstore.getBuildLog(storepath);
   if (!log)
     throw std::invalid_argument("error: no log for path");
   return *log;
