@@ -114,7 +114,8 @@ async fn main() -> Result<(), std::io::Error> {
         .at("/:hash<[0-9a-z]+>.narinfo", get(narinfo))
         .at("/nar/:hash<[0-9a-z]+>.nar.zst", get(nar))
         .at("/log/:path", get(log))
-        .with(poem::middleware::AddData::new(args.clone()));
+        .with(poem::middleware::AddData::new(args.clone()))
+        .with(poem::middleware::Compression::new());
     // TODO: realisation
     // TODO: ls
     // TODO: debug info
