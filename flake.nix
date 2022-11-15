@@ -18,6 +18,7 @@
             };
             nativeBuildInputs = with pkgs;[ rustPlatform.bindgenHook ];
             buildInputs = with pkgs;[ nixVersions.stable boost ];
+            doCheck = false;
           };
         }
       );
