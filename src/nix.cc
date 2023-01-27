@@ -1,6 +1,10 @@
 #include "carinae/include/nix.hh"
 
 namespace carinae {
+void init() {
+  nix::initNix();
+}
+
 Store openStore(rust::Str uri) {
   return nix::openStore(std::string(uri));
 }

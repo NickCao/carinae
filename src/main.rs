@@ -107,6 +107,7 @@ async fn log(Path(path): Path<String>, args: Data<&Args>) -> Result<impl IntoRes
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
+    crate::ffi::init();
     let args: Args = argh::from_env();
     let app = Route::new()
         .at("/", get(index))
@@ -144,6 +145,7 @@ mod ffi {
         type Store;
     }
     unsafe extern "C++" {
+        fn init();
         fn openStore(uri: &str) -> Result<SharedPtr<Store>>;
         fn storeDir(store: SharedPtr<Store>) -> String;
         fn queryPathInfoFromHashPart(

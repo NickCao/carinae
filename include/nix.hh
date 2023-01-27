@@ -2,6 +2,7 @@
 #define SYSTEM "x86_64-linux"
 
 #include "rust/cxx.h"
+#include "nix/shared.hh"
 #include "nix/nar-info.hh"
 #include "nix/store-api.hh"
 #include "nix/store-cast.hh"
@@ -11,6 +12,7 @@
 
 namespace carinae {
 typedef std::shared_ptr<nix::Store> Store;
+void init();
 Store openStore(rust::Str);
 rust::String storeDir(Store);
 PathInfo queryPathInfoFromHashPart(Store, rust::Str, rust::Str);
