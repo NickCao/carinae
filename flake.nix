@@ -17,7 +17,7 @@
               lockFile = ./Cargo.lock;
             };
             nativeBuildInputs = with pkgs;[ rustPlatform.bindgenHook ];
-            buildInputs = with pkgs;[ nixVersions.stable boost ];
+            buildInputs = with pkgs;[ nixVersions.nix_2_14 boost ];
             doCheck = false;
           };
         }

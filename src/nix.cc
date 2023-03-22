@@ -2,7 +2,7 @@
 
 namespace carinae {
 void init() {
-  nix::initNix();
+  nix::initLibStore();
 }
 
 Store openStore(rust::Str uri) {

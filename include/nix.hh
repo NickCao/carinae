@@ -2,7 +2,6 @@
 #define SYSTEM "x86_64-linux"
 
 #include "rust/cxx.h"
-#include "nix/shared.hh"
 #include "nix/nar-info.hh"
 #include "nix/store-api.hh"
 #include "nix/store-cast.hh"

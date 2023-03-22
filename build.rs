@@ -9,5 +9,4 @@ fn main() {
     println!("cargo:rerun-if-changed=src/main.rs");
     println!("cargo:rustc-link-lib=nixstore");
     println!("cargo:rustc-link-lib=nixutil");
-    println!("cargo:rustc-link-lib=nixmain");
 }
